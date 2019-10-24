@@ -183,46 +183,86 @@ HOC（High Order Component） 是 react 中对组件逻辑复用部分进行抽�
 在 Vue 中通常我们采用: mixins
 
 ```jsx
-const dataStorageHoc = WrappedComponent => {
-  return class extends Component{
-    constructor(props){
-      super(props)
-      this.myRef = React.createRef()
+const DataStorageHoc = WrappedComponent => {
+  class DataStorage extends React.Component{
+    state = {
+      data: null
     }
+    
     componentWillMount() {
       const data = localStorage.getItem('data')
       this.setState({ data })
     }
 
     render() {
-      return <WrappedComponent data={this.state.data} {...this.props} /> 
+      const { forwardedRef, ...rest} = this.props
+      // 2. 我们接收到 props 中被改名的 forwardedRef 然后绑定到 ref 上
+      return <WrappedComponent ref={forwardedRef} data={this.state.data} {...rest} /> 
     }
   }
+
+  return React.forwardRef((props,ref)=>{
+     // 1. 我们接收到 ref 然后给他改名成 forwardedRef 传入到props中, 因为此ref是保留字段，需要dom元素才能接收
+    return <DataStorage {...props} forwardedRef={ref} ></DataStorage>
+  })
 }
 ```
 
 使用
 ```jsx
-import React, { Component } from 'react'
-import dataStorageHoc from '@/lib/hoc/data-storage.jsx'
+// example.jsx
+import DataStorageHoc from './hoc/data-storage.jsx'
 
-class HomePage extends Component{
-  render() {
+// wrapped component
+class Example extends React.Component{
+  echo = () => {
+    console.log('hello')
+  }
+  render () {
     return <h2>{this.props.data}</h2>
   }
 }
+export default DataStorageHoc(Example)
 
-export default dataStorageHoc(HomePage)
+// ================================
 
 // 装饰器(decorator)模式
-@dataStorageHoc
-class HomePage extends Component{
-  render() {
+@DataStorageHoc
+class Example extends React.Component{
+  echo = () => {
+    console.log('hello')
+  }
+  render () {
     return <h2>{this.props.data}</h2>
   }
 }
+export default Example
 
-export default HomePage
+// ================================
+
+// 调用
+// app.jsx
+class App extends React.Component {
+  constructor(props){
+    super(props)
+    this.exampleRef = React.createRef()
+  }
+
+  handleEcho = () => {
+    this.exampleRef.current.echo()
+  }
+
+  render() {
+    return (
+      <div>
+        <Example ref={this.exampleRef}></Example>
+        <button onClick={this.handleEcho}>echo</button>
+      </div>
+    )
+  }
+}
+
+export default App
 ```
 
 ## 4) hooks是有状态的函数
